@@ -17,3 +17,11 @@ asdf global java openjdk-21
 ```bash
 sudo apt install graphviz gnuplot
 ```
+
+## Debugging maelstrom
+
+``` bash
+./maelstrom serve
+```
+
+You can then open a browser to `http://localhost:8080` to see results.
