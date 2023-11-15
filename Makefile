@@ -38,3 +38,6 @@ challenge_2_unique_id: build
 
 challenge_3a_single_node_broadcast: build
 	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 1 --time-limit 20 --rate 10
+
+challenge_3b_multi_node_broadcast: build
+	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 5 --time-limit 20 --rate 10
