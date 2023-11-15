@@ -35,3 +35,6 @@ challenge_1_echo: build
 
 challenge_2_unique_id: build
 	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w unique-ids --bin ./$(BIN)/$@ --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition
+
+challenge_3a_single_node_broadcast: build
+	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 1 --time-limit 20 --rate 10
