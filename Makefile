@@ -32,3 +32,6 @@ run_maelstrom:
 
 challenge_1_echo: build
 	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w echo --bin ./$(BIN)/challenge_1_echo --node-count 1 --time-limit 10
+
+challenge_2_unique_id: build
+	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w unique-ids --bin ./$(BIN)/challenge_2_unique_id --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition
