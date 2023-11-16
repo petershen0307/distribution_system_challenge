@@ -10,6 +10,9 @@ import (
 
 // https://fly.io/dist-sys/3b/
 
+// in this challenge we need to add lock when we write new message to `messages` object or read message from `messages` object
+// to guarantee `messages` object can be read and written correctly
+
 func main() {
 	messages := []interface{}{}
 	messagesMutex := sync.Mutex{}
