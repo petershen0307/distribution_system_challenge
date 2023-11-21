@@ -15,17 +15,15 @@ import (
 type maelstromSvc struct {
 	node           *maelstrom.Node
 	topologyMap    map[string][]string
-	messagesLock   sync.Mutex
-	messages       []interface{}
-	receivedMsgMap map[interface{}]interface{}
+	messagesLock   sync.RWMutex
+	receivedMsgMap map[interface{}]struct{}
 }
 
 func newSvc() *maelstromSvc {
 	svc := &maelstromSvc{
 		node:           maelstrom.NewNode(),
 		topologyMap:    make(map[string][]string),
-		messages:       make([]interface{}, 0),
-		receivedMsgMap: make(map[interface{}]interface{}),
+		receivedMsgMap: make(map[interface{}]struct{}),
 	}
 	svc.node.Handle("broadcast", svc.broadcast)
 	svc.node.Handle("read", svc.read)
@@ -38,16 +36,18 @@ func (svc *maelstromSvc) broadcast(msg maelstrom.Message) error {
 	if err := json.Unmarshal(msg.Body, &req); err != nil {
 		return err
 	}
+	newMsg := req["message"]
 	svc.messagesLock.Lock()
-	if _, ok := svc.receivedMsgMap[req["message"]]; !ok {
-		svc.messages = append(svc.messages, req["message"])
+	_, ok := svc.receivedMsgMap[newMsg]
+	svc.receivedMsgMap[newMsg] = struct{}{}
+	svc.messagesLock.Unlock()
+	if !ok {
 		for _, node := range svc.topologyMap[svc.node.ID()] {
 			if err := svc.node.Send(node, req); err != nil {
 				return err
 			}
 		}
 	}
-	svc.messagesLock.Unlock()
 
 	body := make(map[string]interface{})
 	body["type"] = "broadcast_ok"
@@ -58,9 +58,14 @@ func (svc *maelstromSvc) broadcast(msg maelstrom.Message) error {
 func (svc *maelstromSvc) read(msg maelstrom.Message) error {
 	body := make(map[string]interface{})
 	body["type"] = "read_ok"
-	svc.messagesLock.Lock()
-	body["messages"] = svc.messages
-	svc.messagesLock.Unlock()
+	svc.messagesLock.RLock()
+	messages := []interface{}{}
+
+	for k := range svc.receivedMsgMap {
+		messages = append(messages, k)
+	}
+	body["messages"] = messages
+	svc.messagesLock.RUnlock()
 	return svc.node.Reply(msg, body)
 }
 
