@@ -43,6 +43,10 @@ func (svc *maelstromSvc) broadcast(msg maelstrom.Message) error {
 	svc.messagesLock.Unlock()
 	if !ok {
 		for _, node := range svc.topologyMap[svc.node.ID()] {
+			if msg.Src == node {
+				// skip broadcasting to the node that sent the message
+				continue
+			}
 			if err := svc.node.Send(node, req); err != nil {
 				return err
 			}
