@@ -1,4 +1,4 @@
-package main
+package snowflakeid
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func Test_snowflake_gen(t *testing.T) {
 	machineID := 1
 	serialID := 1
 	// act
-	snowflake := generateSnowflakeID(timestamp, machineID, serialID)
+	snowflake := GenerateSnowflakeID(timestamp, machineID, serialID)
 	// assert
 	assert.Equal(t, uint64(timestamp.UTC().UnixMilli()<<1), snowflake&timestampMask)
 	assert.Equal(t, uint64(machineID)<<(1+timestampBits), snowflake&machineIDMask)
