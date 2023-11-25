@@ -25,3 +25,7 @@ sudo apt install graphviz gnuplot
 ```
 
 You can then open a browser to `http://localhost:8080` to see results.
+
+## doc
+
+[doc](https://github.com/jepsen-io/maelstrom/tree/main/doc)
