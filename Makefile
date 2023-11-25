@@ -42,5 +42,8 @@ challenge_3a_single_node_broadcast: build
 challenge_3b_multi_node_broadcast: build
 	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 5 --time-limit 20 --rate 10
 
-challenge_3c_fault_tolerant_broadcast:build
+challenge_3c_fault_tolerant_broadcast: build
 	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 5 --time-limit 20 --rate 10 --nemesis partition
+
+challenge_3d_efficient_broadcast_part_i: build
+	cd $(WORKSPACE) && $(MAELSTROM_BIN) test -w broadcast --bin ./$(BIN)/$@ --node-count 25 --time-limit 20 --rate 100 --latency 100
