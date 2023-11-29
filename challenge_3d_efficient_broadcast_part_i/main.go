@@ -9,14 +9,16 @@ import (
 	"time"
 
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
-	"github.com/petershen0307/distribution_system_challenge/snowflakeid"
 )
 
-// https://fly.io/dist-sys/3d/
+// https://fly.io/dist-sys/3c/
 
-type parcel struct {
-	message    interface{}
-	targetNode string
+func getMsgID(body json.RawMessage) int {
+	msgBody := maelstrom.MessageBody{}
+	if err := json.Unmarshal(body, &msgBody); err != nil {
+		return 0
+	}
+	return msgBody.MsgID
 }
 
 type maelstromSvc struct {
@@ -30,7 +32,7 @@ type maelstromSvc struct {
 	cancel    context.CancelFunc
 	// sender message queue
 	msgQueueRWMutex sync.RWMutex
-	msgQueue        map[uint64]parcel
+	msgQueue        map[string]map[int]interface{} // string is node id, int is message id
 	// snowflake machine information
 	machineSerialID int
 	machineID       int
@@ -44,7 +46,7 @@ func newSvc() *maelstromSvc {
 		receivedMsgMap: make(map[interface{}]struct{}),
 		cancelCtx:      ctx,
 		cancel:         cancel,
-		msgQueue:       make(map[uint64]parcel),
+		msgQueue:       make(map[string]map[int]interface{}),
 		machineID:      os.Getpid(),
 	}
 	svc.node.Handle("broadcast", svc.broadcast)
@@ -72,17 +74,16 @@ func (svc *maelstromSvc) broadcast(msg maelstrom.Message) error {
 			svc.machineSerialID++
 			svc.msgQueueRWMutex.Lock()
 			// we add message to queue and the sender will help to send the message to target
-			svc.msgQueue[snowflakeid.GenerateSnowflakeID(time.Now(), svc.machineID, svc.machineSerialID)] = parcel{
-				targetNode: node,
-				message:    req,
+			if _, ok := svc.msgQueue[node]; !ok {
+				svc.msgQueue[node] = make(map[int]interface{})
 			}
+			svc.msgQueue[node][getMsgID(msg.Body)] = req
 			svc.msgQueueRWMutex.Unlock()
 		}
 	}
 
 	body := make(map[string]interface{})
 	body["type"] = "broadcast_ok"
-
 	return svc.node.Reply(msg, body)
 }
 
@@ -132,25 +133,16 @@ func (svc *maelstromSvc) sender() {
 		case <-ticker.C:
 			svc.msgQueueRWMutex.RLock()
 			// send all message in the queue
-			for uid, v := range svc.msgQueue {
-				msgBodyWithUid := v.message.(map[string]interface{})
-				// add my_uid field to memorize the unique id, this id will use in rpc callback to delete sent message in queue
-				// because rpc didn't return the msg_id, so I create a myself unique id
-				msgBodyWithUid["my_uid"] = uid
-				if err := svc.node.RPC(v.targetNode, msgBodyWithUid, func(msg maelstrom.Message) error {
-					msgBody := make(map[string]interface{})
-					if err := json.Unmarshal(msg.Body, &msgBody); err != nil {
-						return err
-					}
-					// check the my_uid is existed
-					if my_uid, exist := msgBody["my_uid"]; exist {
+			for node, messages := range svc.msgQueue {
+				for _, broadcastMsg := range messages {
+					if err := svc.node.RPC(node, broadcastMsg, func(msg maelstrom.Message) error {
 						svc.msgQueueRWMutex.Lock()
-						delete(svc.msgQueue, my_uid.(uint64))
+						delete(svc.msgQueue[msg.Src], getMsgID(msg.Body))
 						svc.msgQueueRWMutex.Unlock()
+						return nil
+					}); err != nil {
+						continue
 					}
-					return nil
-				}); err != nil {
-					continue
 				}
 			}
 			svc.msgQueueRWMutex.RUnlock()
